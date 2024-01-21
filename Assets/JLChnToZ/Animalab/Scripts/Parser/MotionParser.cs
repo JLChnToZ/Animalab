@@ -1,6 +1,6 @@
 using System;
-using UnityEditor.Animations;
 using UnityEngine;
+using UnityEditor.Animations;
 
 namespace JLChnToZ.Animalab {
     internal abstract class MotionParser : AnimalabParserBase {
