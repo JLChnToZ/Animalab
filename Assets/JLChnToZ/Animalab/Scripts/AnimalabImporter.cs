@@ -1,9 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Animations;
-using System;
 
 #if UNITY_2020_2_OR_NEWER
 using UnityEditor.AssetImporters;
