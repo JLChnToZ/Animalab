@@ -1,0 +1,28 @@
+int intParam = 0;
+float floatParam = 1;
+bool boolParam = true;
+trigger triggerParam;
+
+layer "Default Layer" {
+    default default;
+    any if (floatParam < 1) goto default;
+
+    state default {
+        if (boolParam) goto second;
+    }
+
+    state second {
+        if (intParam > 3) end;
+        if (triggerParam) goto default;
+
+        JLChnToZ.AnimatorBehaviours.ParameterDriver {
+            operations = [
+                {
+                    parameterName = floatParam;
+                    op = Add;
+                    value = 1;
+                };
+            ];
+        };
+    }
+}
