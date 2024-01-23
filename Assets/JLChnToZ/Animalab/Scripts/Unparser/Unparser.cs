@@ -467,16 +467,17 @@ namespace JLChnToZ.Animalab {
         }
 
         static string GetShortAssetPath(string mainAssetPath, UnityObject asset) {
-            var assetPath = AssetDatabase.IsMainAsset(asset) ? AssetDatabase.GetAssetPath(asset) : null;
+            var assetPath = AssetDatabase.GetAssetPath(asset);
             if (string.IsNullOrEmpty(assetPath)) return "";
             if (!string.IsNullOrEmpty(mainAssetPath) && !string.IsNullOrEmpty(assetPath)) {
                 var mainAssetPathUri = new Uri($"file:///{mainAssetPath}");
                 var assetPathUri = new Uri($"file:///{assetPath}");
                 var newUri = Uri.UnescapeDataString(mainAssetPathUri.MakeRelativeUri(assetPathUri).ToString());
                 if (!newUri.StartsWith(".")) newUri = $"./{newUri}";
-                if (assetPath.Length > newUri.Length) return newUri;
+                if (assetPath.Length > newUri.Length)
+                    return AssetDatabase.IsMainAsset(asset) ? newUri : $"{newUri}#{asset.name}";
             }
-            return assetPath;
+            return AssetDatabase.IsMainAsset(asset) ? assetPath : $"{assetPath}#{asset.name}";
         }
 
         static UnityObject GetState(AnimatorTransitionBase transition) {

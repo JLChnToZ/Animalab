@@ -150,6 +150,7 @@ namespace JLChnToZ.Animalab {
                                 case "clip": Attach<ClipParser>(); return;
                                 case "blendtree": Attach<BlendTreeParser>(); return;
                                 case "empty": nextNode = Node.Unknown; return;
+                                case "tag": nextNode = Node.Tag; return;
                                 case "if": case "noSelf": case "any":
                                 case "muted": case "solo": case "wait":
                                 case "fade": case "end": case "goto":
