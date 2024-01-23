@@ -8,6 +8,8 @@ using UnityObject = UnityEngine.Object;
 namespace JLChnToZ.Animalab {
     internal class StateMashineParser : StateParserBase {
         StateMachinePath defaultState;
+        bool absolutePath;
+        string defaultStateName;
 
         protected override string Hint  {
             get {
@@ -43,9 +45,31 @@ namespace JLChnToZ.Animalab {
                         case TokenType.Identifier:
                         case TokenType.SingleQuotedString:
                         case TokenType.DoubleQuotedString:
-                            defaultState = path + token;
-                            nextNode = Node.Unknown;
+                            if (absolutePath)
+                                defaultState += token;
+                            else
+                                defaultStateName = token;
+                            nextNode = Node.DefaultStateExtended;
                             return;
+                        case TokenType.Symbol:
+                            if (token == "/" && !absolutePath) {
+                                absolutePath = true;
+                                defaultState = default;
+                                nextNode = Node.DefaultState;
+                                return;
+                            }
+                            break;
+                    }
+                    break;
+                case Node.DefaultStateExtended:
+                    if (type == TokenType.Symbol && token == "/") {
+                        if (!absolutePath) {
+                            absolutePath = true;
+                            defaultState = defaultStateName;
+                            defaultStateName = null;
+                        }
+                        nextNode = Node.DefaultState;
+                        return;
                     }
                     break;
             }
@@ -78,7 +102,7 @@ namespace JLChnToZ.Animalab {
             switch (type) {
                 case TokenType.Identifier:
                     switch (token) {
-                        case "default": nextNode = Node.DefaultState; return true;
+                        case "default": nextNode = Node.DefaultState; absolutePath = false; return true;
                         case "state": Attach<StateParser>(); return true;
                         case "stateMachine": Attach<StateMashineParser>(); return true;
                         case "if": case "noSelf": case "any":
@@ -104,6 +128,8 @@ namespace JLChnToZ.Animalab {
 
         protected override void OnDetech() {
             if (defaultState.Depth > 0) {
+                if (!absolutePath && !string.IsNullOrEmpty(defaultStateName))
+                    this.defaultState = path + defaultStateName;
                 if (!stateLookup.TryGetValue(this.defaultState, out var defaultState))
                     Debug.LogWarning($"Default state \"{this.defaultState}\" not found.");
                 stateMachine.defaultState = defaultState as AnimatorState;

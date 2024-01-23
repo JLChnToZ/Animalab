@@ -96,8 +96,9 @@ namespace JLChnToZ.Animalab {
             var indentStr = new string(' ', indentLevel * 2);
             var defaultState = stateMachine.defaultState;
             if (defaultState != null) {
-                sb.Append(indentStr);
-                sb.AppendLine($"default {Format(defaultState.name)};");
+                sb.Append(indentStr).Append("default ");
+                WriteRelativePath(stateMachine, defaultState);
+                sb.AppendLine(";");
             }
             var entryTrans = stateMachine.entryTransitions;
             if (entryTrans.Length > 0)
@@ -351,27 +352,31 @@ namespace JLChnToZ.Animalab {
                         sb.Append(" end");
                     else {
                         sb.Append(" goto ");
-                        if (!pathLookup.TryGetValue(source, out var sourcePath)) {
-                            Debug.LogWarning($"Cannot find path for {source.name}");
-                        }
-                        if (!pathLookup.TryGetValue(state, out var statePath)) {
-                            pathLookup[state] = statePath = sourcePath + state.name;
-                            Debug.LogWarning($"Cannot find path for {state.name}, created path {statePath}");
-                        }
-                        if (statePath.Parent == sourcePath)
-                            sb.Append(Format(state.name));
-                        else {
-                            bool isFirstPart = statePath.Depth > 1;
-                            foreach (var part in statePath) {
-                                if (isFirstPart) isFirstPart = false;
-                                else sb.Append('/');
-                                sb.Append(Format(part));
-                            }
-                        }
+                        WriteRelativePath(source, state);
                     }
                     sb.AppendLine(";");
                 }
                 transitionPool.Enqueue(group);
+            }
+        }
+
+        void WriteRelativePath(UnityObject source, UnityObject target) {
+            if (!pathLookup.TryGetValue(source, out var sourcePath)) {
+                Debug.LogWarning($"Cannot find path for {source.name}");
+            }
+            if (!pathLookup.TryGetValue(target, out var statePath)) {
+                pathLookup[target] = statePath = sourcePath + target.name;
+                Debug.LogWarning($"Cannot find path for {target.name}, created path {statePath}");
+            }
+            if (statePath.Parent == sourcePath)
+                sb.Append(Format(target.name));
+            else {
+                bool isFirstPart = statePath.Depth > 1;
+                foreach (var part in statePath) {
+                    if (isFirstPart) isFirstPart = false;
+                    else sb.Append('/');
+                    sb.Append(Format(part));
+                }
             }
         }
 

@@ -144,6 +144,7 @@ namespace JLChnToZ.Animalab {
 
             // Layer
             DefaultState,
+            DefaultStateExtended,
             Weight,
             IKPass,
             Mask,
