@@ -74,7 +74,7 @@ namespace JLChnToZ.Animalab {
             var rootStateMachine = layer.stateMachine;
             pathLookup.Clear();
             processingQueue.Clear();
-            processingQueue.Push((rootStateMachine.name, rootStateMachine));
+            processingQueue.Push((default, rootStateMachine));
             while (processingQueue.Count > 0) {
                 var (name, stateMachine) = processingQueue.Pop();
                 pathLookup[stateMachine] = name;

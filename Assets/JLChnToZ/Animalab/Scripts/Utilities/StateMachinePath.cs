@@ -34,7 +34,9 @@ namespace JLChnToZ.Animalab {
             if (path == other.path) return true;
             if (path == null || path.Length == 0)
                 return other.path == null || other.path.Length == 0;
-            if (path.Length != other.path.Length) return false;
+            if (other.path == null || other.path.Length == 0 ||
+                path.Length != other.path.Length)
+                return false;
             for (int i = 0; i < path.Length; i++)
                 if (path[i] != other.path[i]) return false;
             return true;
