@@ -68,12 +68,29 @@ namespace JLChnToZ.Animalab {
 
         protected UnityObject LoadAsset(string path, Type type) {
             UnityObject asset = null;
+            if (path.StartsWith("{") && path.EndsWith("}")) {
+                var guid = path.Substring(1, path.Length - 2);
+                path = AssetDatabase.GUIDToAssetPath(guid);
+            }
             if (!string.IsNullOrEmpty(mainAssetPath)) {
                 var baseUrl = new Uri($"file:///{mainAssetPath}/..");
-                var combinedPath = Uri.UnescapeDataString(new Uri(baseUrl, path).AbsolutePath);
+                var combinedUrl = new Uri(baseUrl, path);
+                var combinedPath = Uri.UnescapeDataString(combinedUrl.AbsolutePath);
                 if (combinedPath.StartsWith("./")) combinedPath = combinedPath.Substring(2);
                 else if (combinedPath.StartsWith("/")) combinedPath = combinedPath.Substring(1);
-                asset = AssetDatabase.LoadAssetAtPath(combinedPath, type);
+                var fragment = combinedUrl.Fragment;
+                if (string.IsNullOrEmpty(fragment)) {
+                    asset = AssetDatabase.LoadAssetAtPath(combinedPath, type);
+                } else {
+                    fragment = fragment.Substring(1);
+                    var assets = AssetDatabase.LoadAllAssetsAtPath(combinedPath);
+                    if (assets != null)
+                        foreach (var a in assets)
+                            if (a.GetType() == type && a.name == fragment) {
+                                asset = a;
+                                break;
+                            }
+                }
                 if (asset != null) path = combinedPath;
             }
             if (asset == null) asset = AssetDatabase.LoadAssetAtPath(path, type);
@@ -128,6 +145,7 @@ namespace JLChnToZ.Animalab {
 
             // Layer
             DefaultState,
+            DefaultStateExtended,
             Weight,
             IKPass,
             Mask,

@@ -1,8 +1,8 @@
 using System;
-using UnityEngine;
-using System.Collections.Generic;
-using UnityEditor.Animations;
 using System.IO;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEditor.Animations;
 
 namespace JLChnToZ.Animalab {
     public class AnimalabParser : AnimalabParserBase {

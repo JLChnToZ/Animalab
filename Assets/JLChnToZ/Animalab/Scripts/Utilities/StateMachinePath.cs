@@ -10,7 +10,7 @@ namespace JLChnToZ.Animalab {
 
         public StateMachinePath Parent => Up(1);
 
-        public StateMachinePath(string root) : this(new[] { root }) { }
+        public StateMachinePath(string root) : this(new[] { root ?? "" }) { }
 
         public StateMachinePath(params string[] path) => this.path = path;
 
@@ -79,10 +79,10 @@ namespace JLChnToZ.Animalab {
         public static StateMachinePath operator +(StateMachinePath left, StateMachinePath right) {
             if (right.path == null || right.path.Length == 0) return left;
             if (left.path == null || left.path.Length == 0) return right;
-            int length = left.path.Length;
-            var newPath = new string[length + right.path.Length];
-            Array.Copy(left.path, newPath, length);
-            Array.Copy(right.path, 0, newPath, length, right.path.Length);
+            int leftLength = left.path.Length, rightLength = right.path.Length;
+            var newPath = new string[leftLength + rightLength];
+            Array.Copy(left.path, newPath, leftLength);
+            Array.Copy(right.path, 0, newPath, leftLength, rightLength);
             return new StateMachinePath(newPath);
         }
 
