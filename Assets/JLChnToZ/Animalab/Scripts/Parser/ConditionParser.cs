@@ -315,6 +315,7 @@ namespace JLChnToZ.Animalab {
         protected override void OnAttach(StackParser parent) {
             base.OnAttach(parent);
             current = new TransitionData() {
+                fromStateMachine = stateMachine,
                 canTransitionToSelf = true,
             };
             conditions = new List<List<AnimatorCondition>>();
@@ -347,6 +348,7 @@ namespace JLChnToZ.Animalab {
     }
 
     public struct TransitionData {
+        public AnimatorStateMachine fromStateMachine;
         public StateMachinePath fromStatePath;
         public StateMachinePath toStatePath;
         public bool isAny;

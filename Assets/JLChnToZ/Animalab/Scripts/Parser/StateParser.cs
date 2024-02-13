@@ -1,7 +1,8 @@
 using System;
 using System.Text;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor.Animations;
+using System.Collections.Generic;
 
 using UnityObject = UnityEngine.Object;
 
@@ -123,6 +124,7 @@ namespace JLChnToZ.Animalab {
                             if (state == null) {
                                 state = stateMachine.AddState(token, GetNextPlacablePosition());
                                 state.hideFlags = HideFlags.HideInHierarchy;
+                                state.writeDefaultValues = false;
                                 stateLookup.Add(path + token, state);
                                 SaveAsset(state);
                                 nextNode = Node.OpenBrace;
@@ -150,7 +152,6 @@ namespace JLChnToZ.Animalab {
                                 case "clip": Attach<ClipParser>(); return;
                                 case "blendtree": Attach<BlendTreeParser>(); return;
                                 case "empty": nextNode = Node.Unknown; return;
-                                case "tag": nextNode = Node.Tag; return;
                                 case "if": case "noSelf": case "any":
                                 case "muted": case "solo": case "wait":
                                 case "fade": case "end": case "goto":
@@ -242,6 +243,12 @@ namespace JLChnToZ.Animalab {
                 }
             }
             throw new Exception($"Unexpected {type} `{token}`. ({nextNode})");
+        }
+
+        protected override void OnDetech() {
+            if (state.motion == null)
+                state.speed = 10; // Get rid of delay for empty state.
+            base.OnDetech();
         }
     }
 }

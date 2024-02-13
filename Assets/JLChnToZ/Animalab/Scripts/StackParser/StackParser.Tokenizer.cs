@@ -104,37 +104,67 @@ namespace JLChnToZ.Animalab {
                         tokenType = TokenType.Init;
                         break;
                     case TokenType.Symbol:
+                        if (token.Length > 0) {
+                            if (char.IsDigit(c)) {
+                                switch (token[token.Length - 1]) {
+                                    case '+': case '-':
+                                        token.Remove(token.Length - 1, 1);
+                                        if (token.Length > 0) yield return (row, col, tokenType, Consume(token));
+                                        tokenType = TokenType.Number;
+                                        i -= 2;
+                                        continue;
+                                    case '.':
+                                        if (token.Length > 1)
+                                            switch (token[token.Length - 2]) {
+                                                case '+': case '-':
+                                                    token.Remove(token.Length - 2, 2);
+                                                    if (token.Length > 0) yield return (row, col, tokenType, Consume(token));
+                                                    tokenType = TokenType.Number;
+                                                    i -= 3;
+                                                    continue;
+                                            }
+                                        goto case '+';
+                                }
+                            } else if ((c == '/' || c == '*') && token[token.Length - 1] == '/') {
+                                token.Remove(token.Length - 1, 1);
+                                if (token.Length > 0) yield return (row, col, tokenType, Consume(token));
+                                switch (c) {
+                                    case '/': tokenType = TokenType.SingleLineComments; break;
+                                    case '*': tokenType = TokenType.MultiLineComments; break;
+                                }
+                                i--;
+                                continue;
+                            }
+                        }
                         if (!IsIdentifier(c) && (symbolOverride == null || Array.IndexOf(symbolOverride, c) >= 0)) {
                             token.Append(c);
                             break;
                         }
-                        if (char.IsDigit(c) && token.Length > 0) {
-                            var lastChar = token[token.Length - 1];
-                            switch (lastChar) {
-                                case '+': case '-':
-                                    token.Remove(token.Length - 1, 1);
-                                    if (token.Length > 0) yield return (row, col, tokenType, Consume(token));
-                                    tokenType = TokenType.Number;
-                                    i -= 2;
-                                    continue;
-                                case '.':
-                                    if (token.Length > 1) {
-                                        var secondLastChar = token[token.Length - 2];
-                                        switch (secondLastChar) {
-                                            case '+': case '-':
-                                                token.Remove(token.Length - 2, 2);
-                                                if (token.Length > 0) yield return (row, col, tokenType, Consume(token));
-                                                tokenType = TokenType.Number;
-                                                i -= 3;
-                                                continue;
-                                        }
-                                    }
-                                    goto case '+';
-                            }
-                        }
                         if (!IsEmptySeparator(c)) i--;
                         yield return (row, col, tokenType, Consume(token));
                         tokenType = TokenType.Init;
+                        break;
+                    case TokenType.SingleLineComments:
+                        if (c == '\n') tokenType = TokenType.Init;
+                        break;
+                    case TokenType.MultiLineComments:
+                        switch (c) {
+                            case '*':
+                                if (token.Length == 0)
+                                    token.Append(c);
+                                break;
+                            case '/':
+                                if (token.Length > 0) {
+                                    if (token[token.Length - 1] == '*')
+                                        tokenType = TokenType.Init;
+                                    token.Clear();
+                                }
+                                break;
+                            default:
+                                if (token.Length > 0)
+                                    token.Clear();
+                                break;
+                        }
                         break;
                     default:
                         throw new Exception($"Unexpected token type: {tokenType}");
@@ -390,7 +420,9 @@ namespace JLChnToZ.Animalab {
             DoubleQuotedString = 0x03,
             Number = 0x04,
             Symbol = 0x08,
-            BaseMask = Identifier | SingleQuotedString | DoubleQuotedString | Number | Symbol,
+            SingleLineComments = 0x1000,
+            MultiLineComments = 0x1001,
+            BaseMask = Identifier | SingleQuotedString | DoubleQuotedString | Number | Symbol | SingleLineComments | MultiLineComments,
 
             // Numbers - internal only
             ZeroNumber = 0x20 | Number,

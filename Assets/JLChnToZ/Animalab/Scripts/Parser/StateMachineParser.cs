@@ -8,8 +8,6 @@ using UnityObject = UnityEngine.Object;
 namespace JLChnToZ.Animalab {
     internal class StateMashineParser : StateParserBase {
         StateMachinePath defaultState;
-        bool absolutePath;
-        string defaultStateName;
 
         protected override string Hint  {
             get {
@@ -45,31 +43,9 @@ namespace JLChnToZ.Animalab {
                         case TokenType.Identifier:
                         case TokenType.SingleQuotedString:
                         case TokenType.DoubleQuotedString:
-                            if (absolutePath)
-                                defaultState += token;
-                            else
-                                defaultStateName = token;
-                            nextNode = Node.DefaultStateExtended;
+                            defaultState = path + token;
+                            nextNode = Node.Unknown;
                             return;
-                        case TokenType.Symbol:
-                            if (token == "/" && !absolutePath) {
-                                absolutePath = true;
-                                defaultState = default;
-                                nextNode = Node.DefaultState;
-                                return;
-                            }
-                            break;
-                    }
-                    break;
-                case Node.DefaultStateExtended:
-                    if (type == TokenType.Symbol && token == "/") {
-                        if (!absolutePath) {
-                            absolutePath = true;
-                            defaultState = defaultStateName;
-                            defaultStateName = null;
-                        }
-                        nextNode = Node.DefaultState;
-                        return;
                     }
                     break;
             }
@@ -95,14 +71,13 @@ namespace JLChnToZ.Animalab {
             stateMachine = childStateMachine;
             stateLookup.Add(path, stateMachine);
             SaveAsset(stateMachine);
-            transitions = new List<TransitionData>();
         }
 
         protected virtual bool ParseIdentifier(TokenType type, string token, bool hasLineBreak, int indentLevel) {
             switch (type) {
                 case TokenType.Identifier:
                     switch (token) {
-                        case "default": nextNode = Node.DefaultState; absolutePath = false; return true;
+                        case "default": nextNode = Node.DefaultState; return true;
                         case "state": Attach<StateParser>(); return true;
                         case "stateMachine": Attach<StateMashineParser>(); return true;
                         case "if": case "noSelf": case "any":
@@ -128,81 +103,16 @@ namespace JLChnToZ.Animalab {
 
         protected override void OnDetech() {
             if (defaultState.Depth > 0) {
-                if (!absolutePath && !string.IsNullOrEmpty(defaultStateName))
-                    this.defaultState = path + defaultStateName;
                 if (!stateLookup.TryGetValue(this.defaultState, out var defaultState))
                     Debug.LogWarning($"Default state \"{this.defaultState}\" not found.");
                 stateMachine.defaultState = defaultState as AnimatorState;
                 this.defaultState = default;
-            }
-            foreach (var transition in transitions) {
-                bool isEntryState = transition.fromStatePath.Depth == 0;
-                UnityObject source = null, destination = null;
-                if (!isEntryState && !stateLookup.TryGetValue(transition.fromStatePath, out source)) {
-                    Debug.LogWarning($"Source state \"{transition.fromStatePath}\" not found.");
-                    continue;
-                }
-                if (!transition.isExit && (transition.toStatePath.Depth == 0 ||
-                    !stateLookup.TryGetValue(transition.toStatePath, out destination))) {
-                    Debug.LogWarning($"Destination state \"{transition.toStatePath}\" not found.");
-                    continue;
-                }
-                var trans = isEntryState ? transition.isAny ?
-                    AddAnyStateTransition(destination) :
-                    AddEntryTransition(destination) :
-                    transition.isExit ?
-                    AddExitTransition(source) :
-                    AddTransition(source, destination);
-                trans.conditions = transition.conditions;
-                if (trans is AnimatorStateTransition ant) {
-                    ant.hasExitTime = transition.hasExitTime;
-                    ant.exitTime = transition.exitTime;
-                    ant.hasFixedDuration = transition.hasFixedDuration;
-                    ant.duration = transition.duration;
-                    ant.offset = transition.offset;
-                    ant.interruptionSource = transition.interruptionSource;
-                    ant.orderedInterruption = transition.orderedInterruption;
-                    ant.canTransitionToSelf = transition.canTransitionToSelf;
-                }
-                SaveAsset(trans);
             }
             transitions = null;
             var autoLayout = new AutoLayout(stateMachine);
             autoLayout.Iterate(100);
             autoLayout.Apply();
             base.OnDetech();
-        }
-
-        AnimatorTransitionBase AddEntryTransition(UnityObject destination) {
-            if (destination is AnimatorStateMachine destStateMachine)
-                return stateMachine.AddEntryTransition(destStateMachine);
-            if (destination is AnimatorState destState)
-                return stateMachine.AddEntryTransition(destState);
-            throw new Exception($"Unexpected destination type {destination.GetType()}.");
-        }
-
-        AnimatorTransitionBase AddAnyStateTransition(UnityObject destination) {
-            if (destination is AnimatorStateMachine destStateMachine)
-                return stateMachine.AddAnyStateTransition(destStateMachine);
-            if (destination is AnimatorState destState)
-                return stateMachine.AddAnyStateTransition(destState);
-            throw new Exception($"Unexpected destination type {destination.GetType()}.");
-        }
-
-        AnimatorTransitionBase AddExitTransition(UnityObject source) {
-            if (source is AnimatorState srcState)
-                return srcState.AddExitTransition();
-            throw new Exception($"Unexpected source type {source.GetType()}.");
-        }
-
-        AnimatorTransitionBase AddTransition(UnityObject source, UnityObject destination) {
-            if (source is AnimatorState srcState) {
-                if (destination is AnimatorStateMachine destStateMachine)
-                    return srcState.AddTransition(destStateMachine);
-                if (destination is AnimatorState destState)
-                    return srcState.AddTransition(destState);
-            }
-            throw new Exception($"Unexpected source type {source.GetType()} or destination type {destination.GetType()}.");
         }
     }
 
@@ -276,14 +186,83 @@ namespace JLChnToZ.Animalab {
         protected override void OnAttach(StackParser parent) {
             base.OnAttach(parent);
             layer = null;
+            transitions = new List<TransitionData>();
         }
 
         protected override void OnDetech() {
+            foreach (var transition in transitions) {
+                bool isEntryState = transition.fromStatePath.Depth == 0;
+                UnityObject source = transition.fromStateMachine, destination = null;
+                if (!isEntryState && !stateLookup.TryGetValue(transition.fromStatePath, out source)) {
+                    Debug.LogWarning($"Source state \"{transition.fromStatePath}\" not found.");
+                    continue;
+                }
+                if (!transition.isExit && (transition.toStatePath.Depth == 0 ||
+                    !stateLookup.TryGetValue(transition.toStatePath, out destination))) {
+                    Debug.LogWarning($"Destination state \"{transition.toStatePath}\" not found.");
+                    continue;
+                }
+                var trans = isEntryState ? transition.isAny ?
+                    AddAnyStateTransition(source, destination) :
+                    AddEntryTransition(source, destination) :
+                    transition.isExit ?
+                    AddExitTransition(source) :
+                    AddTransition(source, destination);
+                trans.conditions = transition.conditions;
+                if (trans is AnimatorStateTransition ant) {
+                    ant.hasExitTime = transition.hasExitTime;
+                    ant.exitTime = transition.exitTime;
+                    ant.hasFixedDuration = transition.hasFixedDuration;
+                    ant.duration = transition.duration;
+                    ant.offset = transition.offset;
+                    ant.interruptionSource = transition.interruptionSource;
+                    ant.orderedInterruption = transition.orderedInterruption;
+                    ant.canTransitionToSelf = transition.canTransitionToSelf;
+                }
+                SaveAsset(trans);
+            }
+            transitions = null;
             controller.AddLayer(layer);
             if (!string.IsNullOrEmpty(syncLayerName))
                 syncLayers[controller.layers.Length] = syncLayerName;
             layer = null;
             base.OnDetech();
+        }
+
+        static AnimatorTransitionBase AddEntryTransition(UnityObject source, UnityObject destination) {
+            if (source is AnimatorStateMachine srcStateMachine) {
+                if (destination is AnimatorStateMachine destStateMachine)
+                    return srcStateMachine.AddEntryTransition(destStateMachine);
+                if (destination is AnimatorState destState)
+                    return srcStateMachine.AddEntryTransition(destState);
+            }
+            throw new Exception($"Unexpected destination type {destination.GetType()}.");
+        }
+
+        static AnimatorTransitionBase AddAnyStateTransition(UnityObject source, UnityObject destination) {
+            if (source is AnimatorStateMachine srcStateMachine) {
+                if (destination is AnimatorStateMachine destStateMachine)
+                    return srcStateMachine.AddAnyStateTransition(destStateMachine);
+                if (destination is AnimatorState destState)
+                    return srcStateMachine.AddAnyStateTransition(destState);
+            }
+            throw new Exception($"Unexpected destination type {destination.GetType()}.");
+        }
+
+        static AnimatorTransitionBase AddExitTransition(UnityObject source) {
+            if (source is AnimatorState srcState)
+                return srcState.AddExitTransition();
+            throw new Exception($"Unexpected source type {source.GetType()}.");
+        }
+
+        static AnimatorTransitionBase AddTransition(UnityObject source, UnityObject destination) {
+            if (source is AnimatorState srcState) {
+                if (destination is AnimatorStateMachine destStateMachine)
+                    return srcState.AddTransition(destStateMachine);
+                if (destination is AnimatorState destState)
+                    return srcState.AddTransition(destState);
+            }
+            throw new Exception($"Unexpected source type {source.GetType()} or destination type {destination.GetType()}.");
         }
     }
 }
