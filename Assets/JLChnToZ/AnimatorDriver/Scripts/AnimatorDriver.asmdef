@@ -2,7 +2,8 @@
     "name": "AnimatorDriver",
     "rootNamespace": "",
     "references": [
-        "UniTask"
+        "UniTask",
+        "ZString"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

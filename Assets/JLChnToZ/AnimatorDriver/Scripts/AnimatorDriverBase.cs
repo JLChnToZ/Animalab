@@ -96,10 +96,10 @@ namespace JLChnToZ.AnimatorBehaviours {
         SerializedProperty executeTimingProperty, cancelTimingProperty, minDelayProperty, maxDelayProperty, randomDelayProperty;
 
         protected virtual void OnEnable() {
-            if (delayLabel == null) delayLabel = new GUIContent("Delay");
-            if (randomDelayLabel == null) randomDelayLabel = new GUIContent("R", "Random Delay");
-            if (minMaxDelayLabel == null) minMaxDelayLabel = new[] { new GUIContent("Min"), new GUIContent("Max") };
-            if (minMaxDelay == null) minMaxDelay = new float[2];
+            delayLabel ??= new GUIContent("Delay");
+            randomDelayLabel ??= new GUIContent("R", "Random Delay");
+            minMaxDelayLabel ??= new[] { new GUIContent("Min"), new GUIContent("Max") };
+            minMaxDelay ??= new float[2];
             executeTimingProperty = serializedObject.FindProperty("whenToExecute");
             cancelTimingProperty = serializedObject.FindProperty("whenToCancel");
             minDelayProperty = serializedObject.FindProperty("minDelay");
