@@ -40,36 +40,20 @@ namespace JLChnToZ.MathUtilities {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float DefaultEvalulate(string expression) {
             var instance = Instance;
-            instance.Parse(expression);
-            return instance.Evalulate();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Parse(ref UnityMathExpression source) {
-            Parse(source.Expression, true);
-            source.Tokens = Tokens;
+            return instance.Evalulate(instance.Parse(expression));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float Evaluate(UnityMathExpression source) =>
-            EvaluateWithCache(ref source);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float EvaluateWithCache(ref UnityMathExpression source) {
-            var tokens = source.GetOptimizedTokens(this);
-            if (tokens.Length == 0)
-                throw new InvalidOperationException("No tokens found.");
-            Tokens = tokens;
-            return Evalulate();
-        }
+            source.Evaluate(this);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void DefaultParse(ref UnityMathExpression source) =>
-            Instance.Parse(ref source);
+            source.Parse();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float DefaultEvalulate(UnityMathExpression source) =>
-            Instance.EvaluateWithCache(ref source);
+            source.Evaluate();
 
         protected override float ParseNumber(string value) => float.Parse(value);
 
@@ -221,7 +205,7 @@ namespace JLChnToZ.MathUtilities {
     public struct UnityMathExpression : ISerializationCallbackReceiver {
         [SerializeField] string expression;
         [SerializeField] SeralizableTokens[] tokens;
-        RawToken[] convertedTokens;
+        internal RawToken[] convertedTokens;
         string prevExpression;
         bool optimized;
 
@@ -243,33 +227,37 @@ namespace JLChnToZ.MathUtilities {
             }
         }
 
-        public RawToken[] GetOptimizedTokens(UnityMathEvalulator evulator = null, bool addIdIfNotExists = false) {
-            if (evulator == null) evulator = UnityMathEvalulator.Instance;
+        public RawToken[] GetOptimizedTokens(UnityMathEvalulator evalulator = null, bool addIdIfNotExists = false) {
+            evalulator ??= UnityMathEvalulator.Instance;
+            if (convertedTokens == null || convertedTokens.Length == 0)
+                convertedTokens = evalulator.Parse(expression, true);
             if (!optimized) {
-                if (convertedTokens == null || convertedTokens.Length == 0)
-                    evulator.Parse(ref this);
-                evulator.OptimizeTokens(convertedTokens, addIdIfNotExists);
+                evalulator.OptimizeTokens(convertedTokens, addIdIfNotExists);
                 optimized = true;
             }
             return convertedTokens;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Parse(UnityMathEvalulator evalulator = null) =>
-            (evalulator ?? UnityMathEvalulator.Instance).Parse(ref this);
+        public void Parse(UnityMathEvalulator evalulator = null, bool preEvaluate = true) {
+            evalulator ??= UnityMathEvalulator.Instance;
+            convertedTokens = evalulator.Parse(expression, preEvaluate);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Evaluate(UnityMathEvalulator evalulator = null) =>
-            (evalulator ?? UnityMathEvalulator.Instance).EvaluateWithCache(ref this);
+        public float Evaluate(UnityMathEvalulator evalulator = null) {
+            evalulator ??= UnityMathEvalulator.Instance;
+            if (convertedTokens == null || convertedTokens.Length == 0)
+                convertedTokens = evalulator.Parse(expression, true);
+            return evalulator.Evalulate(convertedTokens);
+        }
 
         public override readonly string ToString() => expression;
 
         void ISerializationCallbackReceiver.OnBeforeSerialize() {
             if (prevExpression != expression)
                 try {
-                    var evalulator = UnityMathEvalulator.Instance;
-                    evalulator.Parse(expression, true);
-                    convertedTokens = evalulator.Tokens;
+                    convertedTokens = UnityMathEvalulator.Instance.Parse(expression, true);
                 } catch (Exception ex) {
                     Debug.LogError($"Failed to parse expression: {expression}\n{ex}");
                     convertedTokens = null;

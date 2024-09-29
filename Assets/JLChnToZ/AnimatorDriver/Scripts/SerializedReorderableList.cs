@@ -105,7 +105,7 @@ public class SerializedReorderableList : ReorderableList {
     }
 
     protected virtual void DrawHeader(Rect rect) {
-        if (headerContent == null) headerContent = new GUIContent();
+        headerContent ??= new GUIContent();
         headerContent.text = serializedProperty.displayName;
         headerContent.tooltip = serializedProperty.tooltip;
         EditorGUI.LabelField(rect, headerContent, EditorStyles.boldLabel);

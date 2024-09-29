@@ -41,18 +41,11 @@ namespace JLChnToZ.MathUtilities {
         static readonly byte[] operatorArgc;
 #if ZSTRING_INCLUDED
         Utf16ValueStringBuilder sb;
-        bool isStringBuilderReady;
 #else
         StringBuilder sb;
 #endif
         FastStack<Token> ops, result;
         FastStack<int> backtraceStack;
-        Token[] tokens;
-
-        public Token[] Tokens {
-            get => tokens;
-            set => tokens = value ?? Array.Empty<Token>();
-        }
 
         static AbstractMathEvalulator() {
             precedences = new byte[(int)TokenType.MaxToken];
@@ -96,14 +89,11 @@ namespace JLChnToZ.MathUtilities {
             precedences[(int)TokenType.Comma] = 14;
         }
 
-        public void Parse(string expression, bool preEvaluated = false) => ShuntingYard(Tokenize(expression), preEvaluated);
+        public Token[] Parse(string expression, bool preEvaluated = false) => ShuntingYard(Tokenize(expression), preEvaluated);
 
         IEnumerable<Token> Tokenize(IEnumerable<char> expression) {
 #if ZSTRING_INCLUDED
-            if (!isStringBuilderReady) {
-                sb = ZString.CreateStringBuilder();
-                isStringBuilderReady = true;
-            }
+            using (sb = ZString.CreateStringBuilder()) {
 #else
             sb ??= new();
 #endif
@@ -173,19 +163,15 @@ namespace JLChnToZ.MathUtilities {
                 }
             foreach (var token in YieldTokens(previousTokenType, previousType, type))
                 yield return token;
+#if ZSTRING_INCLUDED
+            }
+#endif
         }
 
         IEnumerable<Token> YieldTokens(TokenType prevTokenType, ParseType prevType, ParseType type) {
-#if ZSTRING_INCLUDED
-            if (!isStringBuilderReady || sb.Length <= 0) yield break;
-            var tokenData = sb.ToString();
-            sb.Dispose();
-            isStringBuilderReady = false;
-#else
             if (sb.Length <= 0) yield break;
             var tokenData = sb.ToString();
             sb.Clear();
-#endif
             TokenType tokenType;
             switch (type) {
                 case ParseType.Number:
@@ -242,7 +228,7 @@ namespace JLChnToZ.MathUtilities {
             }
         }
 
-        void ShuntingYard(IEnumerable<Token> tokens, bool preEvaluated) {
+        Token[] ShuntingYard(IEnumerable<Token> tokens, bool preEvaluated) {
             try {
                 Token lastToken = default;
                 foreach (var token in tokens) {
@@ -307,7 +293,7 @@ namespace JLChnToZ.MathUtilities {
                             PushToken(token, preEvaluated);
                             break;
                     }
-                this.tokens = valueStack.Count == 1 ? new[] { new Token(valueStack.Pop()) } : result.Pop(result.Count).ToArray();
+                return valueStack.Count == 1 ? new[] { new Token(valueStack.Pop()) } : result.Pop(result.Count).ToArray();
             } finally {
                 ops.Clear();
                 result.Clear();
@@ -443,8 +429,6 @@ namespace JLChnToZ.MathUtilities {
             }
             return true;
         }
-
-        public override string ToString() => ToString(tokens);
 
         public string ToString(Token[] tokens) {
             if (tokens == null || tokens.Length <= 0) return "";

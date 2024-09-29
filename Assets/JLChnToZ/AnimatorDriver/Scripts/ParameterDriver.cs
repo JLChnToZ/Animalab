@@ -44,10 +44,8 @@ namespace JLChnToZ.AnimatorBehaviours {
                 mathExpressions.RegisterDefaultFunctions();
             }
             var tokens = expression.GetOptimizedTokens(mathExpressions, true);
-            if (tokens != null && tokens.Length > 0) {
-                mathExpressions.Tokens = tokens;
-                value = mathExpressions.Evalulate();
-            }
+            if (tokens != null && tokens.Length > 0)
+                value = mathExpressions.Evalulate(tokens);
             switch (parameterDriver.GetParameterType(animator, hash)) {
                 case ACParameterType.Float:
                     animator.SetFloat(hash, value);

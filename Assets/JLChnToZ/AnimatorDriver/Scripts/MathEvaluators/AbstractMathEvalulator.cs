@@ -109,7 +109,7 @@ namespace JLChnToZ.MathUtilities {
 
         protected abstract bool IsTruely(TNumber value);
 
-        public TNumber Evalulate() {
+        public TNumber Evalulate(ReadOnlySpan<Token> tokens) {
             try {
                 foreach (var token in tokens) EvalulateStep(token);
                 return valueStack.Pop();
@@ -120,25 +120,24 @@ namespace JLChnToZ.MathUtilities {
             }
         }
 
-        bool EvalulateStep(Token token) {
+        void EvalulateStep(Token token) {
             switch (token.type) {
                 case TokenType.LeftParenthesis:
                     argumentStack.Push(valueStack.Count);
-                    return true;
+                    return;
                 case TokenType.If:
                     var value = valueStack.Pop();
                     bool isTrue = IsTruely(valueStack.Pop());
                     if (isTrue) valueStack.Push(value);
                     conditionStack.Push(isTrue);
-                    return true;
+                    return;
                 case TokenType.Else:
                     if (conditionStack.Pop()) valueStack.Pop();
-                    return true;
+                    return;
             }
-            if (tokenProcessors == null) return false;
+            if (tokenProcessors == null) return;
             var processor = tokenProcessors[(int)token.type];
             if (processor != null) valueStack.Push(processor(token));
-            return true;
         }
 
         public TNumber GetVariable(string key) {
@@ -199,7 +198,7 @@ namespace JLChnToZ.MathUtilities {
             } else
                 functionProcessors.Add(id, processor);
             if (isStaticFunction) {
-                if (this.isStaticFunction == null) this.isStaticFunction = new Dictionary<ushort, bool>();
+                this.isStaticFunction ??= new Dictionary<ushort, bool>();
                 this.isStaticFunction[id] = isStaticFunction;
             }
             return true;
@@ -297,9 +296,6 @@ namespace JLChnToZ.MathUtilities {
             }
             return true;
         }
-
-        public void OptimizeTokens(bool addIdIfNotExists = false) =>
-            OptimizeTokens(tokens, addIdIfNotExists);
 
         public void OptimizeTokens(Token[] tokens, bool addIdIfNotExists = false) {
             if (tokens == null) throw new ArgumentNullException(nameof(tokens));
