@@ -168,28 +168,28 @@ namespace JLChnToZ.MathUtilities {
             idCounter = Math.Min(idCounter, id);
         }
 
-        public bool RegisterProcessor(string functionName, FunctionProcessor processor, bool overrideExisting = true) {
+        public bool RegisterProcessor(string functionName, FunctionProcessor processor, bool overrideExisting = true, bool isStaticFunction = true) {
             if (processor == null) throw new ArgumentNullException(nameof(processor));
             TryGetId(functionName, out var id, true);
-            return RegisterProcessor(id, processor, overrideExisting);
+            return RegisterProcessor(id, processor, overrideExisting, isStaticFunction);
         }
 
-        protected bool RegisterProcessor(ushort id, FunctionProcessor processor, bool overrideExisting = true) =>
-            RegistserProcessor(id, () => {
+        protected bool RegisterProcessor(ushort id, FunctionProcessor processor, bool overrideExisting = true, bool isStaticFunction = true) =>
+            RegisterProcessor(id, () => {
                 var valuePointer = valueStack.Count;
                 if (valuePointer < 0) return Error;
                 int marker = argumentStack.Pop();
                 if (marker > valuePointer) return Error;
                 return processor(valueStack.Pop(valuePointer - marker));
-            }, overrideExisting);
+            }, overrideExisting, isStaticFunction);
 
         protected bool RegisterProcessor(string functionName, Func<TNumber> processor, bool overrideExisting = true, bool isStaticFunction = false) {
             if (string.IsNullOrEmpty(functionName)) throw new ArgumentNullException(nameof(functionName));
             TryGetId(functionName, out var id, true);
-            return RegistserProcessor(id, processor, overrideExisting, isStaticFunction);
+            return RegisterProcessor(id, processor, overrideExisting, isStaticFunction);
         }
 
-        protected bool RegistserProcessor(ushort id, Func<TNumber> processor, bool overrideExisting = true, bool isStaticFunction = false) {
+        protected bool RegisterProcessor(ushort id, Func<TNumber> processor, bool overrideExisting = true, bool isStaticFunction = false) {
             if (processor == null) throw new ArgumentNullException(nameof(processor));
             functionProcessors ??= new Dictionary<ushort, Func<TNumber>>();
             if (functionProcessors.ContainsKey(id)) {
@@ -249,7 +249,10 @@ namespace JLChnToZ.MathUtilities {
                 switch (parameters.Length) {
                     case 0:
                         if (methodInfo.IsStatic || attribute.Type != TokenType.External) goto default;
-                        RegisterProcessor(attribute.FunctionName, Delegate.CreateDelegate(typeof(Func<TNumber>), this, methodInfo) as Func<TNumber>);
+                        RegisterProcessor(attribute.FunctionName,
+                            Delegate.CreateDelegate(typeof(Func<TNumber>), this, methodInfo) as Func<TNumber>,
+                            attribute.IsStaticFunction
+                        );
                         break;
                     case 1:
                         if (parameters[0].ParameterType == typeof(Token)) {
@@ -259,7 +262,8 @@ namespace JLChnToZ.MathUtilities {
                         } else if (attribute.Type == TokenType.External)
                             RegisterProcessor(attribute.FunctionName, methodInfo.IsStatic ?
                                 Delegate.CreateDelegate(typeof(FunctionProcessor), methodInfo) as FunctionProcessor :
-                                Delegate.CreateDelegate(typeof(FunctionProcessor), this, methodInfo) as FunctionProcessor
+                                Delegate.CreateDelegate(typeof(FunctionProcessor), this, methodInfo) as FunctionProcessor,
+                                isStaticFunction: attribute.IsStaticFunction
                             );
                         else
                             RegisterProcessor(attribute.Type, methodInfo.IsStatic ?

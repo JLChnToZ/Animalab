@@ -361,7 +361,8 @@ namespace JLChnToZ.MathUtilities {
             int count = result.Count;
             var peekView = result.Peek(count); // [...condition][...true]<IF>[...false]<ELSE>
             int falseSlotIndex = FindLastInstructionBeginningOffset(peekView);
-            if (falseSlotIndex < 0) return false;
+            if (falseSlotIndex <= 0 || peekView[falseSlotIndex - 1].type != TokenType.If)
+                return false;
             int trueSlotIndex = FindLastInstructionBeginningOffset(peekView[..(falseSlotIndex - 1)]);
             if (trueSlotIndex <= 0 || peekView[trueSlotIndex - 1].type != TokenType.Primitive)
                 return false;
@@ -394,7 +395,7 @@ namespace JLChnToZ.MathUtilities {
         bool EvaluateExternalOnResultStack(ushort identifierIndex, out int argc, out TNumber value) {
             argc = 0;
             if (isStaticFunction == null ||
-                !isStaticFunction[identifierIndex] ||
+                !(isStaticFunction.TryGetValue(identifierIndex, out var isStatic) && isStatic) ||
                 !functionProcessors.TryGetValue(identifierIndex, out var fn)) {
                 value = default;
                 return false;
@@ -428,59 +429,6 @@ namespace JLChnToZ.MathUtilities {
                 argumentStack.Pop(argumentStack.Count - argumentStackOffset);
             }
             return true;
-        }
-
-        public string ToString(Token[] tokens) {
-            if (tokens == null || tokens.Length <= 0) return "";
-#if ZSTRING_INCLUDED
-            var sb = ZString.CreateStringBuilder();
-#else
-            if (sb == null) sb = new StringBuilder();
-#endif
-            try {
-                bool first = true;
-                foreach (var token in tokens) {
-                    if (first) first = false;
-                    else sb.Append(' ');
-                    switch (token.type) {
-                        case TokenType.Unknown: sb.Append('?'); break;
-                        case TokenType.Primitive:
-                            sb.Append(token.numberValue);
-                            break;
-                        case TokenType.Identifier:
-                            sb.Append('`');
-                            sb.Append(token.data);
-                            sb.Append('`');
-                            break;
-                        case TokenType.External:
-                            sb.Append(':');
-                            sb.Append(token.data);
-                            sb.Append(')');
-                            break;
-                        case TokenType.LeftParenthesis:
-                            sb.Append('(');
-                            first = true;
-                            break;
-                        case TokenType.Comma:
-                            sb.Append(',');
-                            break;
-                        case TokenType.RightParenthesis:
-                            sb.Append(')');
-                            break;
-                        default:
-                            sb.Append('~');
-                            sb.Append(token.type);
-                            break;
-                    }
-                }
-                return sb.ToString();
-            } finally {
-#if ZSTRING_INCLUDED
-                sb.Dispose();
-#else
-                sb.Clear();
-#endif
-            }
         }
 
         protected abstract TNumber ParseNumber(string value);
