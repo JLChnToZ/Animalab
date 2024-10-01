@@ -189,7 +189,7 @@ namespace JLChnToZ.MathUtilities {
             _ => float.NaN,
         };
 
-        [Processor("isnan")] static float IsNaN(ReadOnlySpan<float> args) => float.IsNaN(args[0]) ? 1F : 0F;
+        [Processor("isnan")] static float IsNaN(ReadOnlySpan<float> args) => args.Length > 0 ? float.IsNaN(args[0]) ? 1F : 0F : float.NaN;
 
         [Processor("switch")]
         static float Switch(ReadOnlySpan<float> args) {
