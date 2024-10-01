@@ -68,9 +68,9 @@ namespace JLChnToZ.MathUtilities {
 
         [Processor("pow")] static double Pow(ReadOnlySpan<double> args) => args.Length >= 2 ? Math.Pow(args[0], args[1]) : double.NaN;
 
-        [Processor("lerp")] static double Lerp(ReadOnlySpan<double> args) => args.Length > 3 ? args[0] + (args[1] - args[0]) * args[2] : double.NaN;
+        [Processor("lerp")] static double Lerp(ReadOnlySpan<double> args) => args.Length >= 3 ? args[0] + (args[1] - args[0]) * args[2] : double.NaN;
 
-        [Processor("remap")] static double Remap(ReadOnlySpan<double> args) => args.Length > 5 ? args[3] + (args[4] - args[3]) * (args[0] - args[1]) / (args[2] - args[1]) : double.NaN;
+        [Processor("remap")] static double Remap(ReadOnlySpan<double> args) => args.Length >= 5 ? args[3] + (args[4] - args[3]) * (args[0] - args[1]) / (args[2] - args[1]) : double.NaN;
 
         [Processor("saturate")] static double Saturate(ReadOnlySpan<double> args) => args.Length > 0 ? Math.Clamp(args[0], 0, 1) : double.NaN;
 
