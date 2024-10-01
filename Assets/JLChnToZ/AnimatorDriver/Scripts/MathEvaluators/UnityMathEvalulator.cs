@@ -115,39 +115,39 @@ namespace JLChnToZ.MathUtilities {
         float RightShift(float value, float shift) =>
             IsSafeInteger(value) && IsSafeInteger(shift) ? unchecked((int)value >> (int)shift) : float.NaN;
 
-        [Processor("abs")] static float Abs(ReadOnlySpan<float> args) => Mathf.Abs(args[0]);
+        [Processor("abs")] static float Abs(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Abs(args[0]) : float.NaN;
 
-        [Processor("sqrt")] static float Sqrt(ReadOnlySpan<float> args) => Mathf.Sqrt(args[0]);
+        [Processor("sqrt")] static float Sqrt(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Sqrt(args[0]) : float.NaN;
 
-        [Processor("cbrt")] static float Cbrt(ReadOnlySpan<float> args) => (float)Math.Cbrt(args[0]);
+        [Processor("cbrt")] static float Cbrt(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Cbrt(args[0]) : float.NaN;
 
-        [Processor("pow")] static float Pow(ReadOnlySpan<float> args) => Mathf.Pow(args[0], args[1]);
+        [Processor("pow")] static float Pow(ReadOnlySpan<float> args) => args.Length >= 2 ? Mathf.Pow(args[0], args[1]) : float.NaN;
 
-        [Processor("lerp")] static float Lerp(ReadOnlySpan<float> args) => Mathf.LerpUnclamped(args[0], args[1], args[2]);
+        [Processor("lerp")] static float Lerp(ReadOnlySpan<float> args) => args.Length >= 3 ? Mathf.LerpUnclamped(args[0], args[1], args[2]) : float.NaN;
 
-        [Processor("remap")] static float Remap(ReadOnlySpan<float> args) => Mathf.LerpUnclamped(args[0], args[1], Mathf.InverseLerp(args[3], args[4], args[2]));
+        [Processor("remap")] static float Remap(ReadOnlySpan<float> args) => args.Length >= 5 ? Mathf.LerpUnclamped(args[0], args[1], Mathf.InverseLerp(args[3], args[4], args[2])) : float.NaN;
 
-        [Processor("saturate")] static float Saturate(ReadOnlySpan<float> args) => Mathf.Clamp01(args[0]);
+        [Processor("saturate")] static float Saturate(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Clamp01(args[0]) : float.NaN;
 
-        [Processor("sign")] static float Sign(ReadOnlySpan<float> args) => Mathf.Sign(args[0]);
+        [Processor("sign")] static float Sign(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Sign(args[0]) : float.NaN;
 
-        [Processor("round")] static float Round(ReadOnlySpan<float> args) => Mathf.Round(args[0]);
+        [Processor("round")] static float Round(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Round(args[0]) : float.NaN;
 
-        [Processor("floor")] static float Floor(ReadOnlySpan<float> args) => Mathf.Floor(args[0]);
+        [Processor("floor")] static float Floor(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Floor(args[0]) : float.NaN;
 
-        [Processor("ceil")] static float Ceil(ReadOnlySpan<float> args) => Mathf.Ceil(args[0]);
+        [Processor("ceil")] static float Ceil(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Ceil(args[0]) : float.NaN;
 
-        [Processor("trunc")] static float Trunc(ReadOnlySpan<float> args) => (float)Math.Truncate(args[0]);
+        [Processor("trunc")] static float Trunc(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Truncate(args[0]) : float.NaN;
 
-        [Processor("sin")] static float Sin(ReadOnlySpan<float> args) => Mathf.Sin(args[0]);
+        [Processor("sin")] static float Sin(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Sin(args[0]) : float.NaN;
 
-        [Processor("cos")] static float Cos(ReadOnlySpan<float> args) => Mathf.Cos(args[0]);
+        [Processor("cos")] static float Cos(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Cos(args[0]) : float.NaN;
 
-        [Processor("tan")] static float Tan(ReadOnlySpan<float> args) => Mathf.Tan(args[0]);
+        [Processor("tan")] static float Tan(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Tan(args[0]) : float.NaN;
 
-        [Processor("asin")] static float Asin(ReadOnlySpan<float> args) => Mathf.Asin(args[0]);
+        [Processor("asin")] static float Asin(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Asin(args[0]) : float.NaN;
 
-        [Processor("acos")] static float Acos(ReadOnlySpan<float> args) => Mathf.Acos(args[0]);
+        [Processor("acos")] static float Acos(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Acos(args[0]) : float.NaN;
 
         [Processor("atan")]
         static float Atan(ReadOnlySpan<float> args) => args.Length switch {
@@ -156,17 +156,17 @@ namespace JLChnToZ.MathUtilities {
             _ => float.NaN,
         };
 
-        [Processor("sinh")] static float Sinh(ReadOnlySpan<float> args) => (float)Math.Sinh(args[0]);
+        [Processor("sinh")] static float Sinh(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Sinh(args[0]) : float.NaN;
 
-        [Processor("cosh")] static float Cosh(ReadOnlySpan<float> args) => (float)Math.Cosh(args[0]);
+        [Processor("cosh")] static float Cosh(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Cosh(args[0]) : float.NaN;
 
-        [Processor("tanh")] static float Tanh(ReadOnlySpan<float> args) => (float)Math.Tanh(args[0]);
+        [Processor("tanh")] static float Tanh(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Tanh(args[0]) : float.NaN;
 
-        [Processor("asinh")] static float Asinh(ReadOnlySpan<float> args) => (float)Math.Asinh(args[0]);
+        [Processor("asinh")] static float Asinh(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Asinh(args[0]) : float.NaN;
 
-        [Processor("acosh")] static float Acosh(ReadOnlySpan<float> args) => (float)Math.Acosh(args[0]);
+        [Processor("acosh")] static float Acosh(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Acosh(args[0]) : float.NaN;
 
-        [Processor("atanh")] static float Atanh(ReadOnlySpan<float> args) => (float)Math.Atanh(args[0]);
+        [Processor("atanh")] static float Atanh(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Atanh(args[0]) : float.NaN;
 
         [Processor("log")]
         static float Log(ReadOnlySpan<float> args) => args.Length switch {
@@ -175,11 +175,11 @@ namespace JLChnToZ.MathUtilities {
             _ => float.NaN,
         };
 
-        [Processor("exp")] static float Exp(ReadOnlySpan<float> args) => Mathf.Exp(args[0]);
+        [Processor("exp")] static float Exp(ReadOnlySpan<float> args) => args.Length > 0 ? Mathf.Exp(args[0]) : float.NaN;
 
-        [Processor("log10")] static float Log10(ReadOnlySpan<float> args) => (float)Math.Log10(args[0]);
+        [Processor("log10")] static float Log10(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Log10(args[0]) : float.NaN;
 
-        [Processor("log2")] static float Log2(ReadOnlySpan<float> args) => (float)Math.Log(args[0], 2);
+        [Processor("log2")] static float Log2(ReadOnlySpan<float> args) => args.Length > 0 ? (float)Math.Log(args[0], 2) : float.NaN;
 
         [Processor("random", false)]
         static float Random(ReadOnlySpan<float> args) => args.Length switch {

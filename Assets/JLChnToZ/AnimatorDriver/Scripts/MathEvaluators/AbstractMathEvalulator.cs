@@ -14,9 +14,9 @@ namespace JLChnToZ.MathUtilities {
         FastStack<int> argumentStack;
         IDictionary<string, ushort> idTable;
         IDictionary<ushort, TNumber> variables;
-        IDictionary<ushort, Func<TNumber>> functionProcessors;
+        IDictionary<ushort, FunctionProcessor> functionProcessors;
         IDictionary<ushort, bool> isStaticFunction;
-        Func<Token, TNumber>[] tokenProcessors;
+        readonly Func<Token, TNumber>[] tokenProcessors = new Func<Token, TNumber>[argumentInfos.Length];
         IComparer<TNumber> comparer;
         Func<string, TNumber> getVariableFunc;
         Func<ushort, TNumber> getVariableFuncById;
@@ -76,7 +76,7 @@ namespace JLChnToZ.MathUtilities {
                 }
                 var oldFunctions = functionProcessors;
                 if (oldFunctions != null && oldFunctions.Count > 0) {
-                    functionProcessors = new Dictionary<ushort, Func<TNumber>>();
+                    functionProcessors = new Dictionary<ushort, FunctionProcessor>();
                     foreach (var kv in oldFunctions) {
                         if (!idTable.TryGetValue(oldMapping[kv.Key], out var newId))
                             newId = kv.Key;
@@ -174,24 +174,9 @@ namespace JLChnToZ.MathUtilities {
             return RegisterProcessor(id, processor, overrideExisting, isStaticFunction);
         }
 
-        protected bool RegisterProcessor(ushort id, FunctionProcessor processor, bool overrideExisting = true, bool isStaticFunction = true) =>
-            RegisterProcessor(id, () => {
-                var valuePointer = valueStack.Count;
-                if (valuePointer < 0) return Error;
-                int marker = argumentStack.Pop();
-                if (marker > valuePointer) return Error;
-                return processor(valueStack.Pop(valuePointer - marker));
-            }, overrideExisting, isStaticFunction);
-
-        protected bool RegisterProcessor(string functionName, Func<TNumber> processor, bool overrideExisting = true, bool isStaticFunction = false) {
-            if (string.IsNullOrEmpty(functionName)) throw new ArgumentNullException(nameof(functionName));
-            TryGetId(functionName, out var id, true);
-            return RegisterProcessor(id, processor, overrideExisting, isStaticFunction);
-        }
-
-        protected bool RegisterProcessor(ushort id, Func<TNumber> processor, bool overrideExisting = true, bool isStaticFunction = false) {
+        protected bool RegisterProcessor(ushort id, FunctionProcessor processor, bool overrideExisting = true, bool isStaticFunction = true) {
             if (processor == null) throw new ArgumentNullException(nameof(processor));
-            functionProcessors ??= new Dictionary<ushort, Func<TNumber>>();
+            functionProcessors ??= new Dictionary<ushort, FunctionProcessor>();
             if (functionProcessors.ContainsKey(id)) {
                 if (!overrideExisting) return false;
                 functionProcessors[id] = processor;
@@ -206,27 +191,24 @@ namespace JLChnToZ.MathUtilities {
 
         public bool RegisterProcessor(TokenType type, UnaryOperatorProcessor processor, bool overrideExisting = true) {
             if (processor == null) throw new ArgumentNullException(nameof(processor));
-            operatorArgc[(int)type] = 1;
             return RegisterProcessor(type, (Token _) => {
                 if (valueStack.Count < 1) return Error;
-                return processor(valueStack.Pop());
+                var args = valueStack.Pop(1);
+                return processor(args[0]);
             }, overrideExisting);
         }
 
         public bool RegisterProcessor(TokenType type, BinaryOperatorProcessor processor, bool overrideExisting = true) {
             if (processor == null) throw new ArgumentNullException(nameof(processor));
-            operatorArgc[(int)type] = 2;
             return RegisterProcessor(type, (Token _) => {
                 if (valueStack.Count < 2) return Error;
-                var second = valueStack.Pop();
-                var first = valueStack.Pop();
-                return processor(first, second);
+                var args = valueStack.Pop(2);
+                return processor(args[0], args[1]);
             }, overrideExisting);
         }
 
         protected bool RegisterProcessor(TokenType type, Func<Token, TNumber> processor, bool overrideExisting = true) {
             if (processor == null) throw new ArgumentNullException(nameof(processor));
-            tokenProcessors ??= new Func<Token, TNumber>[(int)TokenType.MaxToken];
             if (tokenProcessors[(int)type] != null) {
                 if (!overrideExisting) return false;
                 tokenProcessors[(int)type] = processor;
@@ -247,17 +229,10 @@ namespace JLChnToZ.MathUtilities {
                 if (attribute == null) continue;
                 var parameters = methodInfo.GetParameters();
                 switch (parameters.Length) {
-                    case 0:
-                        if (methodInfo.IsStatic || attribute.Type != TokenType.External) goto default;
-                        RegisterProcessor(attribute.FunctionName,
-                            Delegate.CreateDelegate(typeof(Func<TNumber>), this, methodInfo) as Func<TNumber>,
-                            attribute.IsStaticFunction
-                        );
-                        break;
                     case 1:
                         if (parameters[0].ParameterType == typeof(Token)) {
                             if (methodInfo.IsStatic) goto default;
-                            operatorArgc[(int)attribute.Type] = 0;
+                            argumentInfos[(int)attribute.Type] = 0;
                             RegisterProcessor(attribute.Type, Delegate.CreateDelegate(typeof(Func<Token, TNumber>), this, methodInfo) as Func<Token, TNumber>);
                         } else if (attribute.Type == TokenType.External)
                             RegisterProcessor(attribute.FunctionName, methodInfo.IsStatic ?
@@ -410,11 +385,15 @@ namespace JLChnToZ.MathUtilities {
 
         [Processor(TokenType.External)]
         protected virtual TNumber External(Token token) {
-            if (token.data is not Func<TNumber> externProc &&
+            if (token.data is not FunctionProcessor externProc &&
                 (!(token.identifierIndex != 0 || TryGetId(token.data as string, out token.identifierIndex, false)) ||
                 functionProcessors == null || !functionProcessors.TryGetValue(token.identifierIndex, out externProc)))
-                throw new Exception($"External function {token.data} not found");
-            return externProc();
+                return Error;
+            var valuePointer = valueStack.Count;
+            if (valuePointer < 0) return Error;
+            int marker = argumentStack.Pop();
+            if (marker > valuePointer) return Error;
+            return externProc(valueStack.Pop(valuePointer - marker));
         }
         #endregion
     }

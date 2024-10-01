@@ -8,37 +8,9 @@ using System.Text;
 
 namespace JLChnToZ.MathUtilities {
     public abstract partial class AbstractMathEvalulator<TNumber> where TNumber : struct {
-        static readonly Dictionary<string, TokenType> tokenMap = new(StringComparer.OrdinalIgnoreCase) {
-            ["+"] = TokenType.Add,
-            ["-"] = TokenType.Subtract,
-            ["*"] = TokenType.Multiply,
-            ["/"] = TokenType.Divide,
-            ["%"] = TokenType.Modulo,
-            ["**"] = TokenType.Power,
-            [">"] = TokenType.GreaterThan,
-            [">="] = TokenType.GreaterThanOrEquals,
-            ["<"] = TokenType.LessThan,
-            ["<="] = TokenType.LessThanOrEquals,
-            ["=="] = TokenType.Equals,
-            ["!="] = TokenType.NotEquals,
-            ["&&"] = TokenType.LogicalAnd,
-            ["||"] = TokenType.LogicalOr,
-            ["!"] = TokenType.LogicalNot,
-            ["&"] = TokenType.BitwiseAnd,
-            ["|"] = TokenType.BitwiseOr,
-            ["^"] = TokenType.BitwiseXor,
-            ["~"] = TokenType.BitwiseNot,
-            ["<<"] = TokenType.LeftShift,
-            [">>"] = TokenType.RightShift,
-            ["?"] = TokenType.If,
-            [":"] = TokenType.Else,
-            ["("] = TokenType.LeftParenthesis,
-            [")"] = TokenType.RightParenthesis,
-            [","] = TokenType.Comma,
-        };
-        static readonly byte[] precedences; // Lower value means higher precedence
-        static readonly bool[] rtlOperators;
-        static readonly byte[] operatorArgc;
+        static readonly Dictionary<string, TokenType> tokenMap = new(StringComparer.OrdinalIgnoreCase);
+        static readonly byte[] precedences = new byte[(int)TokenType.MaxToken]; // Lower value means higher precedence
+        static readonly sbyte[] argumentInfos = new sbyte[(int)TokenType.MaxToken]; // Negative value means the operator is right-to-left
 #if ZSTRING_INCLUDED
         Utf16ValueStringBuilder sb;
 #else
@@ -48,48 +20,48 @@ namespace JLChnToZ.MathUtilities {
         FastStack<int> backtraceStack;
 
         static AbstractMathEvalulator() {
-            precedences = new byte[(int)TokenType.MaxToken];
-            rtlOperators = new bool[(int)TokenType.MaxToken];
-            operatorArgc = new byte[(int)TokenType.MaxToken];
-            precedences[(int)TokenType.LeftParenthesis] = 0;
-            precedences[(int)TokenType.RightParenthesis] = 0;
-            rtlOperators[(int)TokenType.External] = true;
-            precedences[(int)TokenType.External] = 1;
-            operatorArgc[(int)TokenType.External] = 255;
-            rtlOperators[(int)TokenType.UnaryPlus] = true;
-            precedences[(int)TokenType.UnaryPlus] = 1;
-            rtlOperators[(int)TokenType.UnaryMinus] = true;
-            precedences[(int)TokenType.UnaryMinus] = 1;
-            rtlOperators[(int)TokenType.LogicalNot] = true;
-            precedences[(int)TokenType.LogicalNot] = 1;
-            rtlOperators[(int)TokenType.BitwiseNot] = true;
-            precedences[(int)TokenType.BitwiseNot] = 1;
-            precedences[(int)TokenType.Multiply] = 2;
-            precedences[(int)TokenType.Divide] = 2;
-            precedences[(int)TokenType.Modulo] = 2;
-            precedences[(int)TokenType.Power] = 2;
-            precedences[(int)TokenType.Add] = 3;
-            precedences[(int)TokenType.Subtract] = 3;
-            precedences[(int)TokenType.LeftShift] = 4;
-            precedences[(int)TokenType.RightShift] = 4;
-            precedences[(int)TokenType.GreaterThan] = 5;
-            precedences[(int)TokenType.GreaterThanOrEquals] = 5;
-            precedences[(int)TokenType.LessThan] = 5;
-            precedences[(int)TokenType.LessThanOrEquals] = 5;
-            precedences[(int)TokenType.Equals] = 6;
-            precedences[(int)TokenType.NotEquals] = 6;
-            precedences[(int)TokenType.BitwiseAnd] = 7;
-            precedences[(int)TokenType.BitwiseXor] = 8;
-            precedences[(int)TokenType.BitwiseOr] = 9;
-            precedences[(int)TokenType.LogicalAnd] = 10;
-            precedences[(int)TokenType.LogicalOr] = 11;
-            precedences[(int)TokenType.If] = 12;
-            precedences[(int)TokenType.Else] = 13;
-            operatorArgc[(int)TokenType.Else] = 4;
-            precedences[(int)TokenType.Comma] = 14;
+            DefineToken(TokenType.Primitive,           null, 0,    0);
+            DefineToken(TokenType.Identifier,          null, 0,    0);
+            DefineToken(TokenType.External,            null, 1, -127);
+            DefineToken(TokenType.UnaryPlus,           "+",  1,   -1);
+            DefineToken(TokenType.UnaryMinus,          "-",  1,   -1);
+            DefineToken(TokenType.LogicalNot,          "!",  1,   -1);
+            DefineToken(TokenType.BitwiseNot,          "~",  1,   -1);
+            DefineToken(TokenType.Multiply,            "*",  2,    2);
+            DefineToken(TokenType.Divide,              "/",  2,    2);
+            DefineToken(TokenType.Modulo,              "%",  2,    2);
+            DefineToken(TokenType.Power,               "**", 2,    2);
+            DefineToken(TokenType.Add,                 "+",  3,    2);
+            DefineToken(TokenType.Subtract,            "-",  3,    2);
+            DefineToken(TokenType.LeftShift,           "<<", 4,    2);
+            DefineToken(TokenType.RightShift,          ">>", 4,    2);
+            DefineToken(TokenType.GreaterThan,         ">",  5,    2);
+            DefineToken(TokenType.GreaterThanOrEquals, ">=", 5,    2);
+            DefineToken(TokenType.LessThan,            "<",  5,    2);
+            DefineToken(TokenType.LessThanOrEquals,    "<=", 5,    2);
+            DefineToken(TokenType.Equals,              "==", 6,    2);
+            DefineToken(TokenType.NotEquals,           "!=", 6,    2);
+            DefineToken(TokenType.BitwiseAnd,          "&",  7,    2);
+            DefineToken(TokenType.BitwiseXor,          "^",  8,    2);
+            DefineToken(TokenType.BitwiseOr,           "!",  9,    2);
+            DefineToken(TokenType.LogicalAnd,          "&&", 10,   2);
+            DefineToken(TokenType.LogicalOr,           "||", 11,   2);
+            DefineToken(TokenType.If,                  "?",  12,   2);
+            DefineToken(TokenType.Else,                ":",  13,   4);
+            DefineToken(TokenType.LeftParenthesis,     "(",  0,    0);
+            DefineToken(TokenType.RightParenthesis,    ")",  0,    0);
+            DefineToken(TokenType.Comma,               ",",  14,   0);
         }
 
-        public Token[] Parse(string expression, bool preEvaluated = false) => ShuntingYard(Tokenize(expression), preEvaluated);
+        static void DefineToken(TokenType tokenType, string input, byte precedence, sbyte argumentInfo) {
+            if (input != null) tokenMap[input] = tokenType;
+            precedences[(int)tokenType] = precedence;
+            argumentInfos[(int)tokenType] = argumentInfo;
+        }
+
+        public Token[] Parse(string expression, bool preEvaluated = false) =>
+            string.IsNullOrWhiteSpace(expression) ? Array.Empty<Token>() :
+            ShuntingYard(Tokenize(expression), preEvaluated);
 
         IEnumerable<Token> Tokenize(IEnumerable<char> expression) {
 #if ZSTRING_INCLUDED
@@ -273,7 +245,7 @@ namespace JLChnToZ.MathUtilities {
                             break;
                         default:
                             PushPreviousIdentifier(ref lastToken, false, preEvaluated);
-                            if (!rtlOperators[(int)token.type])
+                            if (argumentInfos[(int)token.type] < 0)
                                 while (ops.TryPeek(out var top)) {
                                     if (precedences[(int)top.type] > precedences[(int)token.type] ||
                                         top.type == TokenType.LeftParenthesis) break;
@@ -328,7 +300,7 @@ namespace JLChnToZ.MathUtilities {
                 case TokenType.Else: return EvelulateIfOnResultStack(out argc, out value);
             }
             int typeIndex = (int)tokenType;
-            argc = operatorArgc[typeIndex];
+            argc = Math.Abs(argumentInfos[typeIndex]);
             if (argc == 0 || result.Count < argc) {
                 value = default;
                 return false;
@@ -383,7 +355,7 @@ namespace JLChnToZ.MathUtilities {
                     case TokenType.External: backtraceStack.Push(-1); break;
                     case TokenType.LeftParenthesis: backtraceStack.Pop(); break;
                     default:
-                        int argc = operatorArgc[(int)tokens[i].type];
+                        int argc = Math.Abs(argumentInfos[(int)tokens[i].type]);
                         if (argc > 0) backtraceStack.Push(argc);
                         break;
                 }
@@ -419,15 +391,8 @@ namespace JLChnToZ.MathUtilities {
                 value = default;
                 return false;
             }
-            int valueStackOffset = valueStack.Count, argumentStackOffset = argumentStack.Count;
-            try {
-                argumentStack.Push(valueStackOffset);
-                foreach (var argToken in peekView) valueStack.Push(argToken.numberValue);
-                value = fn();
-            } finally {
-                valueStack.Pop(valueStack.Count - valueStackOffset);
-                argumentStack.Pop(argumentStack.Count - argumentStackOffset);
-            }
+            foreach (var argToken in peekView) valueStack.Push(argToken.numberValue);
+            value = fn(valueStack.Pop(peekView.Length));
             return true;
         }
 
